@@ -1,11 +1,13 @@
 const express = require("express");
 const app = express();
+const cors = require("cors");
 const { open } = require("sqlite");
 const sqlite3 = require("sqlite3");
 const path = require("path");
 const dbPath = path.join(__dirname, "twitterClone.db");
 let db = null;
 app.use(express.json());
+app.use(cors());
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const initial = async () => {
@@ -14,7 +16,7 @@ const initial = async () => {
       filename: dbPath,
       driver: sqlite3.Database,
     });
-    app.listen(3000, () => {
+    app.listen(4000, () => {
       console.log("Running");
     });
   } catch (e) {
@@ -29,11 +31,11 @@ app.post("/register/", async (req, res) => {
   const UsernameCheck = await db.get(checkQuery);
   if (UsernameCheck !== undefined) {
     res.status(400);
-    res.send("User already exists");
+    res.send({ message: "User already exists" });
   } else {
     if (password.length < 6) {
       res.status(400);
-      res.send("Password is too short");
+      res.send({ message: "Password is too short" });
     } else {
       const BPassword = await bcrypt.hash(password, 10);
       const createUserQuery = `
@@ -41,7 +43,7 @@ app.post("/register/", async (req, res) => {
       values('${name}','${username}','${BPassword}','${gender}');`;
       const createUser = await db.run(createUserQuery);
       res.status(200);
-      res.send("User created successfully");
+      res.send({ message: "User created successfully" });
     }
   }
 });
@@ -52,7 +54,7 @@ app.post("/login/", async (req, res) => {
   const UsernameCheck = await db.get(checkQuery);
   if (UsernameCheck === undefined) {
     res.status(400);
-    res.send("Invalid user");
+    res.send({ message: "Invalid user" });
   } else {
     console.log(password);
     console.log(UsernameCheck.password);
@@ -64,7 +66,7 @@ app.post("/login/", async (req, res) => {
       res.send({ jwtToken });
     } else {
       res.status(400);
-      res.send("Invalid password");
+      res.send({ message: "Invalid password" });
     }
   }
 });
@@ -286,22 +288,28 @@ app.get("/user/tweets/", authenticateToken, async (req, res) => {
   const getID = await db.get(getIDQuery);
   const ID = getID.user_id;
   const getTweetQuery = `
- SELECT  
-  t.tweet,  
-  COUNT(DISTINCT l.like_id) AS likes, 
-  COUNT(DISTINCT r.reply_id) AS replies,
-  t.date_time as dateTime
-FROM 
-  Tweet t 
-  LEFT JOIN Like l ON t.tweet_id = l.tweet_id 
-  LEFT JOIN Reply r ON t.tweet_id = r.tweet_id 
-WHERE 
-  t.user_id = ${ID} 
-GROUP BY 
-  t.tweet_id`;
+    SELECT  
+      t.tweet,  
+      COUNT(DISTINCT l.like_id) AS likes, 
+      COUNT(DISTINCT r.reply_id) AS replies,
+      t.date_time as dateTime
+    FROM 
+      Tweet t 
+      LEFT JOIN Like l ON t.tweet_id = l.tweet_id 
+      LEFT JOIN Reply r ON t.tweet_id = r.tweet_id 
+    WHERE 
+      t.user_id = ${ID} 
+    GROUP BY 
+      t.tweet_id`;
   const getTweet = await db.all(getTweetQuery);
-  res.send(getTweet);
+
+  if (getTweet.length === 0) {
+    res.send("No tweets found.");
+  } else {
+    res.status(200).send(getTweet);
+  }
 });
+
 //Api-10
 app.post("/user/tweets/", authenticateToken, async (req, res) => {
   const getIDQuery = `select user_id from user where username = '${req.username}'`;
@@ -312,7 +320,7 @@ app.post("/user/tweets/", authenticateToken, async (req, res) => {
   insert into tweet (tweet,user_id,date_time)
   values('${tweet}',${ID},'${new Date()}');`;
   await db.run(createTweetQuery);
-  res.send("Created a Tweet");
+  res.send({ message: "Created a Tweet" });
 });
 //Api-11
 app.delete("/tweets/:tweetId/", authenticateToken, async (req, res) => {
