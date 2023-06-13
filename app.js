@@ -31,7 +31,7 @@ app.post("/register/", async (req, res) => {
   const UsernameCheck = await db.get(checkQuery);
   if (UsernameCheck !== undefined) {
     res.status(400);
-    res.send({ message: "User already exists.." });
+    res.send({ message: "User already exists" });
   } else {
     if (password.length < 6) {
       res.status(400);
@@ -342,4 +342,31 @@ app.delete("/tweets/:tweetId/", authenticateToken, async (req, res) => {
     res.send("Tweet Removed");
   }
 });
+// Api-12
+app.get("/tweets/", authenticateToken, async (req, res) => {
+  const getAllTweetsQuery = `
+    SELECT  
+      t.tweet,  
+      COUNT(DISTINCT l.like_id) AS likes, 
+      COUNT(DISTINCT r.reply_id) AS replies,
+      t.date_time AS dateTime,
+      u.username AS username
+    FROM 
+      Tweet t 
+      LEFT JOIN Like l ON t.tweet_id = l.tweet_id 
+      LEFT JOIN Reply r ON t.tweet_id = r.tweet_id
+      INNER JOIN User u ON t.user_id = u.user_id
+    GROUP BY 
+      t.tweet_id, u.username
+    ORDER BY
+      t.date_time DESC`;
+  const getAllTweets = await db.all(getAllTweetsQuery);
+
+  if (getAllTweets.length === 0) {
+    res.send("No tweets found.");
+  } else {
+    res.status(200).send(getAllTweets);
+  }
+});
+
 module.exports = app;
