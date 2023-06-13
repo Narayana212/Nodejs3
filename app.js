@@ -31,7 +31,7 @@ app.post("/register/", async (req, res) => {
   const UsernameCheck = await db.get(checkQuery);
   if (UsernameCheck !== undefined) {
     res.status(400);
-    res.send({ message: "User already exists" });
+    res.send({ message: "User already exists.." });
   } else {
     if (password.length < 6) {
       res.status(400);
