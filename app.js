@@ -369,4 +369,20 @@ app.get("/tweets/", authenticateToken, async (req, res) => {
   }
 });
 
+
+// Api-13: Search users
+
+// Api-13: Search users
+app.post("/search/", authenticateToken, async (req, res) => {
+  const { query } = req.body;
+  const searchQuery = `
+    SELECT name, username
+    FROM User
+    WHERE name LIKE '%${query}%'
+       OR username LIKE '%${query}%';
+  `;
+  const searchResults = await db.all(searchQuery);
+  res.send(searchResults);
+});
+
 module.exports = app;
